@@ -24,6 +24,34 @@ const ALLOWED = [
 
 app.get("/healthz", (_req, res) => res.json({ ok: true }));
 
+/** Discover the outbound IP(s) this host uses for upstream requests.
+ *  Call this after deploying, then whitelist the returned IP(s) in NOWPayments.
+ */
+app.get("/discover-ip", async (_req, res) => {
+  const services = [
+    "https://api.ipify.org?format=json",
+    "https://ifconfig.me/all.json",
+    "https://checkip.amazonaws.com",
+  ];
+  const results = [];
+  for (const url of services) {
+    try {
+      const r = await fetch(url, { timeout: 5000 });
+      if (!r.ok) continue;
+      const text = (await r.text()).trim();
+      const ip = text.includes("{")
+        ? (JSON.parse(text).ip ?? JSON.parse(text).ip_addr ?? "")
+        : text;
+      if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip)) results.push(ip);
+    } catch (e) {
+      // ignore individual service failures
+    }
+  }
+  const unique = [...new Set(results)];
+  res.json({ ips: unique, sourcesChecked: services.length });
+});
+
+
 app.post("/forward", async (req, res) => {
   const auth = req.headers["authorization"] || "";
   if (auth !== `Bearer ${SECRET}`) return res.status(401).json({ error: "unauthorized" });
