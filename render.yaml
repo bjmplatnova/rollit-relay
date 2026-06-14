@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: rollit-nowpayments-relay
+    runtime: node
+    rootDir: relay
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free
+    envVars:
+      - key: RELAY_SECRET
+        generateValue: true
